@@ -25,15 +25,34 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Field[] listaCanciones = R.raw.class.getFields();
+        LinearLayout principal = (LinearLayout) findViewById(R.id.botones);
+        LinearLayout auxiliar =null;
         int num_columnas = 5; //numero de columnas en la vista
         //creamos la lista de botones que se irán añadiendo a la vista
         //en el layout donde van los botones
         for (int i=0; i<listaCanciones.length; i++){
+            if (i % num_columnas == 0){
+                auxiliar = creaLineaBotones(i);
+                principal.addView(auxiliar);
+            }
             //creamos un botón por código
             Button b = creaBoton(i, listaCanciones);
-            //TODO: añadir el boton al Hashmap que yo me voy a comer
+            listaSonidos.put(b.getTag().toString(), b.getText().toString());
+            auxiliar.addView(b);
         }
 
+    }
+
+    private LinearLayout creaLineaBotones(int numeroLinea){
+        LinearLayout.LayoutParams parametros =
+                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT
+                                              ,LinearLayout.LayoutParams.WRAP_CONTENT);
+        parametros.weight=1;
+        LinearLayout linea = new LinearLayout(this);
+        linea.setLayoutParams(parametros);
+        linea.setOrientation(LinearLayout.HORIZONTAL);
+        linea.setId(numeroLinea);
+        return linea;
     }
 
     private Button creaBoton(int i, Field[] _listaCanciones){
@@ -44,15 +63,20 @@ public class MainActivity extends AppCompatActivity {
         parametroBotones.gravity = Gravity.CENTER_HORIZONTAL;
         Button b = new Button(this);
         b.setLayoutParams(parametroBotones);
-        b.setText(_listaCanciones[i].getName());
+        b.setText (acortaEtiquetaBoton(_listaCanciones[i].getName()));
         b.setTextColor(Color.WHITE);
         b.setAllCaps(true);
         b.setBackgroundColor(Color.BLUE);
         int id= this.getResources().getIdentifier(_listaCanciones[i].getName(),"raw",this.getPackageName());
         b.setTag(id);
         b.setId(id + 500);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                reproduceVideo(view);
+            }
+        });
 
-        //TODO: faltan añadir los listeners para el onclick
         return b;
     }
 
@@ -76,5 +100,16 @@ public class MainActivity extends AppCompatActivity {
                 mediaPlayer.release();
             }
         });
+    }
+
+    private String acortaEtiquetaBoton(String s){
+        if (s.substring(0,2).contains("v_")){ //quita el primer v_
+            s = s.substring(2);
+        }
+        if (s.contains("_")){
+            s = s.substring(s.indexOf('_')); // quita lo siguiente al v_
+        }
+        s = s.replace('_', ' ');  //cambia los guiones bajos por espacios
+        return s;
     }
 }
