@@ -1,7 +1,10 @@
 package com.example.isonidos;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ShareCompat;
+import androidx.core.content.FileProvider;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -13,12 +16,22 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.VideoView;
 
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     HashMap<String , String> listaSonidos = new HashMap<String,String>();
+    private static final String SHARED_PROVIDER_AUTHORITY = BuildConfig.APPLICATION_ID + ".fileprovider";
+    private static final String SHARED_FOLDER = "shared";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,10 +83,23 @@ public class MainActivity extends AppCompatActivity {
         int id= this.getResources().getIdentifier(_listaCanciones[i].getName(),"raw",this.getPackageName());
         b.setTag(id);
         b.setId(id + 500);
+
         b.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 reproduceVideo(view);
+            }
+        });
+
+        b.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                try {
+                    sonidoCopiar(v);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return true;
             }
         });
 
@@ -112,4 +138,57 @@ public class MainActivity extends AppCompatActivity {
         s = s.replace('_', ' ');  //cambia los guiones bajos por espacios
         return s;
     }
+
+    public void sonidoCopiar(View view) throws IOException{
+        Button b = (Button) findViewById(view.getId());
+        String nombre = listaSonidos.get(view.getTag().toString());
+        String extension = ".mp4";
+        String tipo = "video/mp4";
+
+        InputStream ins = this.getResources().openRawResource(
+                this.getResources().getIdentifier(view.getTag().toString(),"raw", this.getPackageName()));
+
+        final File sharedFolder = new File(getFilesDir(), SHARED_FOLDER);
+        sharedFolder.mkdirs();
+
+        final File sharedFile = File.createTempFile(nombre,extension , sharedFolder);
+        sharedFile.createNewFile();
+
+        copyInputStreamToFile (ins, sharedFile);
+        final Uri uri = FileProvider.getUriForFile(this, SHARED_PROVIDER_AUTHORITY, sharedFile);
+        final ShareCompat.IntentBuilder intentBuilder = ShareCompat.IntentBuilder.from(this)
+                .setType(tipo)
+                .addStream(uri);
+        final Intent chooserIntent = intentBuilder.createChooserIntent();
+        startActivity(chooserIntent);
+    }
+
+    // Copy an InputStream to a File.
+    private void copyInputStreamToFile(InputStream in, File file) {
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(file);
+            byte[] buf = new byte[1024];
+            int len;
+            while((len=in.read(buf))>0){
+                out.write(buf,0,len);
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            // Ensure that the InputStreams are closed even if there's an exception.
+            try {
+                if ( out != null ) {
+                    out.close();
+                }
+                in.close();
+            }
+            catch ( IOException e ) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }
